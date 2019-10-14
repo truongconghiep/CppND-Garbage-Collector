@@ -75,7 +75,8 @@ public:
         return Iter<T>(addr, addr, addr + _size);
     }
     // Return an Iter to one past the end of an allocated array.
-    Iter<T> end(){
+    Iter<T> end()
+    {
         int _size;
         if (isArray)
             _size = arraySize;
@@ -89,6 +90,9 @@ public:
     static void showlist();
     // Clear refContainer when program exits.
     static void shutdown();
+
+    template<typename U, int size_>
+    friend void swap(Pointer<U, size_> &, Pointer<U, size_> &);
 };
 
 // STATIC INITIALIZATION
@@ -108,56 +112,94 @@ Pointer<T,size>::Pointer(T *t){
 
     // TODO: Implement Pointer constructor
     // Lab: Smart Pointer Project Lab
+    addr = t;
+    isArray = (size > 0);
+    arraySize = size;
 
+    auto ptrInfo = findPtrInfo(t);
+    if (ptrInfo != refContainer.end())
+    {
+      ++ptrInfo->refcount;
+    }
+    else
+    {
+      PtrDetails<T> ptr_details;
+      ptr_details.refcount = 1;
+      ptr_details.memPtr = t;
+      ptr_details.isArray = isArray;
+      ptr_details.arraySize = arraySize;
+      refContainer.push_back(ptr_details);
+    }
 }
 // Copy constructor.
 template< class T, int size>
-Pointer<T,size>::Pointer(const Pointer &ob){
-
-    // TODO: Implement Pointer constructor
-    // Lab: Smart Pointer Project Lab
-
+Pointer<T,size>::Pointer(const Pointer &ob)
+{
+    Pointer(ob.addr);
 }
 
 // Destructor for Pointer.
 template <class T, int size>
-Pointer<T, size>::~Pointer(){
-
+Pointer<T, size>::~Pointer()
+{
     // TODO: Implement Pointer destructor
     // Lab: New and Delete Project Lab
+    auto ptrInfo = findPtrInfo(addr);
+    if (ptrInfo != refContainer.end()) 
+    {
+        if (ptrInfo->refcount > 0) --ptrInfo->refcount;
+        if (ptrInfo->refcount == 0) collect();
+    }
 }
 
 // Collect garbage. Returns true if at least
 // one object was freed.
 template <class T, int size>
-bool Pointer<T, size>::collect(){
-
+bool Pointer<T, size>::collect()
+{
     // TODO: Implement collect function
     // LAB: New and Delete Project Lab
     // Note: collect() will be called in the destructor
-    return false;
+    bool freed = false;
+
+    typename std::list<PtrDetails<T>>::iterator p;
+    for (p = refContainer.begin(); p != refContainer.end(); ++p) 
+    {
+      if (p->refcount > 0) continue;
+      refContainer.erase(p);
+      if (p->isArray) delete[] p->memPtr;
+      else delete p->memPtr;
+      freed = true;
+      break;
+    }
+    return freed;
 }
 
 // Overload assignment of pointer to Pointer.
 template <class T, int size>
-T *Pointer<T, size>::operator=(T *t){
-
+T *Pointer<T, size>::operator=(T *t)
+{
     // TODO: Implement operator==
     // LAB: Smart Pointer Project Lab
-
+    Pointer<T, size> temp(t);
+    swap(*this, temp);
+    return t;
 }
+
 // Overload assignment of Pointer to Pointer.
 template <class T, int size>
-Pointer<T, size> &Pointer<T, size>::operator=(Pointer &rv){
-
+Pointer<T, size> &Pointer<T, size>::operator=(Pointer &rv)
+{
     // TODO: Implement operator==
     // LAB: Smart Pointer Project Lab
-
+    swap(*this, rv);
+    return *this;
 }
 
 // A utility function that displays refContainer.
 template <class T, int size>
-void Pointer<T, size>::showlist(){
+void Pointer<T, size>::showlist()
+{
     typename std::list<PtrDetails<T> >::iterator p;
     std::cout << "refContainer<" << typeid(T).name() << ", " << size << ">:\n";
     std::cout << "memPtr refcount value\n ";
@@ -177,6 +219,7 @@ void Pointer<T, size>::showlist(){
     }
     std::cout << std::endl;
 }
+
 // Find a pointer in refContainer.
 template <class T, int size>
 typename std::list<PtrDetails<T> >::iterator
@@ -200,4 +243,15 @@ void Pointer<T, size>::shutdown(){
         p->refcount = 0;
     }
     collect();
+}
+
+// Swap method
+template<typename T, int size>
+void swap(Pointer<T, size> &first, Pointer<T, size> &second) 
+{
+    // enable ADL
+    using std::swap;
+    swap(first.addr, second.addr);
+    swap(first.isArray, second.isArray);
+    swap(first.arraySize, second.arraySize);
 }
