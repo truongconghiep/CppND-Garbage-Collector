@@ -163,15 +163,27 @@ bool Pointer<T, size>::collect()
     bool freed = false;
 
     typename std::list<PtrDetails<T>>::iterator p;
-    for (p = refContainer.begin(); p != refContainer.end(); ++p) 
+    do
     {
-      if (p->refcount > 0) continue;
-      refContainer.erase(p);
-      if (p->isArray) delete[] p->memPtr;
-      else delete p->memPtr;
-      freed = true;
-      break;
-    }
+        for (p = refContainer.begin(); p != refContainer.end(); ++p) 
+        {
+            if (p->refcount > 0) 
+            {
+                continue;
+            }
+            refContainer.erase(p);
+            if (p->isArray) 
+            {
+                delete[] p->memPtr;
+            }
+            else 
+            {
+                delete p->memPtr;
+            }
+            freed = true;
+            break;
+        }
+    } while (p != refContainer.end());
     return freed;
 }
 
